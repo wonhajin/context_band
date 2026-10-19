@@ -25,6 +25,7 @@ npx -p typescript@5.6.3 tsc -p .     # .claude-plugin/types/ 가 생성된 뒤�
 
 ## 알려진 제약
 
+- **띠(`AbovePrompt`)에서 `Text`의 `size`를 쓰지 않는다.** 타입에는 있지만 엔진이 터미널·데스크톱 모두에서 거부하고, 그러면 띠 전체가 엔진 기본 화면으로 바뀐다(`claude plugin test`가 잡는다).
 - effort는 모델 요청(`turn.step`) 때만 보이므로 첫 응답 전에는 표시되지 않는다.
 - 컨텍스트 링은 `Svg`라 데스크톱·VS Code에서만 그려진다(터미널엔 `Svg` 없음). `Svg`는 테마 키를 못 받아서, `/config`의 `theme` 값이 `light…`면 어두운 색, 아니면 흰색. 값은 측정 시점에 읽으므로 테마 변경은 다음 응답부터 반영되고, `auto`는 다크로 취급된다.
 - 모드 API에는 모델 표시 이름이 없다(`$.session.model()`은 id만). `displayName()`이 `claude-<계열>-<주>-<부>`를 `Opus 5.5` 식으로 바꾸고, 형태가 다르면 id 그대로 둔다.
