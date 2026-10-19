@@ -109,7 +109,7 @@ export const register: Register = on => {
       parts.push(
         <Text>
           <Text color={color}>Context {pct}%</Text>
-          <Text dimColor size="footnote"> ({k(used)}/{k(s.window)})</Text>
+          <Text dimColor> ({k(used)}/{k(s.window)})</Text>
         </Text>,
       )
     }

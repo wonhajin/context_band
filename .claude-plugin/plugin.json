@@ -1,6 +1,13 @@
 {
   "name": "context-band",
   "version": "0.1.0",
-  "description": "Model, effort, context usage and session cost in a band above the prompt",
+  "description": "입력창 위 띠에 모델 · effort · 컨텍스트 사용량 · 세션 비용 표시",
+  "author": { "name": "wonhajin" },
+  "homepage": "https://github.com/wonhajin/context_band",
+  "repository": "https://github.com/wonhajin/context_band",
+  "license": "MIT",
+  "keywords": ["context", "usage", "cost", "statusline", "model", "effort", "컨텍스트"],
+  "documentationUrl": "https://github.com/wonhajin/context_band#readme",
+  "supportUrl": "https://github.com/wonhajin/context_band/issues",
   "types": "./types/index.d.ts"
 }
