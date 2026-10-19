@@ -11,10 +11,12 @@ type CacheUsage = { cache_read_input_tokens?: number; cache_creation_input_token
 
 // Answers turn.step beneath the plugin; returns a call that runs one model request with the given cache usage.
 // Register it before the test's first $ call, as the kit requires of every hook beneath the plugins.
-function mockSteps(on: any) {
+// streaming: runs while the reply streams, e.g. to move the test's clock on.
+function mockSteps(on: any, streaming?: () => void) {
   let next: CacheUsage = {}
   let index = 0
   on('turn.step', async function* (_$: unknown, e: { turnId: string; index: number }) {
+    streaming?.()
     const usage = { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, ...next, model: 'claude-opus-5-5' }
     return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage }
   })
@@ -144,6 +146,60 @@ describe('context-band', () => {
     const ui = await $.ui.mount({ plugin: 'context-band', surface: 'terminal', ...BAND } as never)
     expect(await ui.find({ type: 'Text', text: /Context 1%/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Cache/ })).toBeUndefined()
+  })
+
+  test('counts from when the request was sent, not when the reply ended', async ($, on) => {
+    // A hand-held clock: the reply takes 2 minutes to stream.
+    let now = 1_000_000
+    on('clock.now', () => ({ value: now }) as never)
+    const step = mockSteps(on, () => {
+      now += 2 * 60_000
+    })
+    on('session.model', () => ({ value: 'claude-opus-5-5' }))
+    on('session.measure', (_$, e) => ({ changed: e.changed }))
+    await $.session.measure({ context: { tokens: 1_000, window: 200_000, percent: 1 }, rateLimits: [], changed: ['context'] })
+    await step($, { cache_read_input_tokens: 1_000 })
+    const ui = await $.ui.mount({ plugin: 'context-band', surface: 'terminal', ...BAND } as never)
+    expect(await ui.find({ type: 'Text', text: /^Cache 58m$/ })).toBeDefined()
+  })
+
+  test('drops the countdown after /model and /clear', async ($, on) => {
+    mock.clock(on, { now: 1_000_000 })
+    const step = mockSteps(on)
+    // Nothing beneath the plugins answers classic events in a test; these stand in for the engine.
+    on('classic.PostModelSwitch', () => ({}) as never)
+    on('classic.SessionStart', () => ({}) as never)
+    on('session.model', () => ({ value: 'claude-opus-5-5' }))
+    on('session.measure', (_$, e) => ({ changed: e.changed }))
+    await $.session.measure({ context: { tokens: 1_000, window: 200_000, percent: 1 }, rateLimits: [], changed: ['context'] })
+    const shown = async () => {
+      const ui = await $.ui.mount({ plugin: 'context-band', surface: 'terminal', ...BAND } as never)
+      const found = await ui.find({ type: 'Text', text: /^Cache / })
+      await ui.unmount()
+      return found !== undefined
+    }
+
+    await step($, { cache_read_input_tokens: 1_000 })
+    expect(await shown()).toBe(true)
+    await $.classic.PostModelSwitch({
+      from_model: 'claude-opus-5-5',
+      to_model: 'claude-sonnet-5-5',
+      requested_model: 'sonnet',
+      source: 'command',
+      context_tokens: 1_000,
+      prompt_cache_warm: true,
+      cache_ttl: '1h',
+      estimated_cache_write_usd: 0.01,
+      pricing: 'catalog',
+    } as never)
+    expect(await shown()).toBe(false)
+
+    await step($, { cache_read_input_tokens: 1_000 })
+    expect(await shown()).toBe(true)
+    await $.classic.SessionStart({ source: 'compact' } as never)
+    expect(await shown()).toBe(true)
+    await $.classic.SessionStart({ source: 'clear' } as never)
+    expect(await shown()).toBe(false)
   })
 
   test('hides the cache time when turned off', { options: { showCache: false } }, async ($, on) => {

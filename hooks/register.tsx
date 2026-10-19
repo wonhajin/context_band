@@ -75,6 +75,10 @@ async function refresh($: EngineInterface, patch: Partial<Snapshot> = {}, figure
   }))
 }
 
+async function dropCache($: EngineInterface) {
+  await update($, snapshot, prev => ({ ...prev, cachedAt: undefined })).catch(() => undefined)
+}
+
 export const register: Register = (on, options) => {
   // userConfig toggles; a change in /config reloads the module with the new values.
   const showModel = options.showModel !== false
@@ -102,13 +106,24 @@ export const register: Register = (on, options) => {
     if (isMain && e.effort !== undefined) {
       await refresh($, { effort: String(e.effort) }).catch(() => undefined)
     }
+    // The cache is touched when the request arrives, not when the reply ends, so read the time first.
+    const sentAt = isMain && showCache ? await $.clock.now().catch(() => undefined) : undefined
     const result = yield* next(e)
     const usage = result.usage
-    if (isMain && usage && usage.cache_read_input_tokens + usage.cache_creation_input_tokens > 0) {
-      const cachedAt = await $.clock.now().catch(() => undefined)
-      if (cachedAt !== undefined) await update($, snapshot, prev => ({ ...prev, cachedAt })).catch(() => undefined)
+    if (sentAt !== undefined && usage && usage.cache_read_input_tokens + usage.cache_creation_input_tokens > 0) {
+      await update($, snapshot, prev => ({ ...prev, cachedAt: sentAt })).catch(() => undefined)
     }
     return result
+  })
+
+  // The prompt cache is per model and per conversation: after /model or /clear the old entry is no use.
+  on('classic.PostModelSwitch', async ($, e, next) => {
+    await dropCache($)
+    return next(e)
+  })
+  on('classic.SessionStart', async ($, e, next) => {
+    if (e.source === 'clear') await dropCache($)
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -141,11 +156,13 @@ export const register: Register = (on, options) => {
         </Text>,
       )
     }
-    const now = showCache && s.cachedAt !== undefined ? await $.clock.now().catch(() => undefined) : undefined
-    if (s.cachedAt !== undefined && now !== undefined) {
-      const remaining = s.cachedAt + cacheTtlMs - now
-      const isLow = remaining > 0 && remaining <= cacheTtlMs * CACHE_WARN_FRACTION
-      parts.push(isLow ? <Text color="warning">{cacheLabel(remaining)}</Text> : <Text dimColor>{cacheLabel(remaining)}</Text>)
+    if (showCache && s.cachedAt !== undefined) {
+      const now = await $.clock.now().catch(() => undefined)
+      if (now !== undefined) {
+        const remaining = s.cachedAt + cacheTtlMs - now
+        const isLow = remaining > 0 && remaining <= cacheTtlMs * CACHE_WARN_FRACTION
+        parts.push(<Text color={isLow ? 'warning' : undefined} dimColor={!isLow}>{cacheLabel(remaining)}</Text>)
+      }
     }
     if (showCost && typeof s.usd === 'number') parts.push(<Text>${s.usd.toFixed(2)}</Text>)
 
