@@ -1,4 +1,4 @@
-// Same figures as ~/.claude/statusline.mjs, e.g. "Opus 5.5 · high · Context 7% (74k/1000k) · $3.21",
+// Same figures as ~/.claude/statusline.mjs, e.g. "Context 7% (74k/1000k) · Cache 42m · $3.21  Opus 5.5 · high",
 // drawn in the band above the prompt. Cost is Claude Code's own estimate at API list prices.
 // Thresholds match hooks/warn-long-session.mjs: 1st warning yellow, 2nd red.
 import { atom, read, update } from 'claude-code'
@@ -12,6 +12,18 @@ const CTX_ALERT = 350_000
 const snapshot = atom({ plugin: 'context-band', key: 'snapshot' } as const, {})
 
 const k = (n: number) => Math.round(n / 1000) + 'k'
+
+// The mod API exposes no cache TTL outside model-switch hooks, so it comes from userConfig and the
+// remaining time is an estimate: last main-thread request that touched the cache + TTL (a read refreshes it).
+const CACHE_TTL_MS = { '5m': 5 * 60_000, '1h': 60 * 60_000 } as const
+const CACHE_WARN_FRACTION = 0.2
+const CACHE_REDRAW_MS = 30_000
+
+export function cacheLabel(remainingMs: number): string {
+  if (remainingMs <= 0) return 'Cache expired'
+  const minutes = Math.floor(remainingMs / 60_000)
+  return minutes < 1 ? 'Cache <1m' : `Cache ${minutes}m`
+}
 
 // An Svg takes no theme key, so the ring's color follows Claude Code's /config theme row, as effortless does.
 const RING_DARK_THEME = '#ffffff'
@@ -63,9 +75,21 @@ async function refresh($: EngineInterface, patch: Partial<Snapshot> = {}, figure
   }))
 }
 
-export const register: Register = on => {
+async function dropCache($: EngineInterface) {
+  await update($, snapshot, prev => ({ ...prev, cachedAt: undefined })).catch(() => undefined)
+}
+
+export const register: Register = (on, options) => {
+  // userConfig toggles; a change in /config reloads the module with the new values.
+  const showModel = options.showModel !== false
+  const showCost = options.showCost !== false
+  const showCache = options.showCache !== false
+  const cacheTtlMs = options.cacheTtl === '5m' ? CACHE_TTL_MS['5m'] : CACHE_TTL_MS['1h']
+
   on('session.start', async ($, e, next) => {
     await refresh($).catch(() => undefined)
+    // The countdown moves with no event behind it, so redraw on a timer.
+    if (showCache) $.clock.every(CACHE_REDRAW_MS, () => $.ui.invalidate('ui.render'))
     return next(e)
   })
 
@@ -76,11 +100,30 @@ export const register: Register = on => {
   })
 
   // Effort is only visible on a request; record the main conversation's, observe only.
+  // Subagents cache their own prefixes, so only main-thread responses move the cache countdown.
   on('turn.step', async function* ($, e, next) {
-    if (e.agentId === undefined && e.effort !== undefined) {
+    const isMain = e.agentId === undefined
+    if (isMain && e.effort !== undefined) {
       await refresh($, { effort: String(e.effort) }).catch(() => undefined)
     }
-    return yield* next(e)
+    // The cache is touched when the request arrives, not when the reply ends, so read the time first.
+    const sentAt = isMain && showCache ? await $.clock.now().catch(() => undefined) : undefined
+    const result = yield* next(e)
+    const usage = result.usage
+    if (sentAt !== undefined && usage && usage.cache_read_input_tokens + usage.cache_creation_input_tokens > 0) {
+      await update($, snapshot, prev => ({ ...prev, cachedAt: sentAt })).catch(() => undefined)
+    }
+    return result
+  })
+
+  // The prompt cache is per model and per conversation: after /model or /clear the old entry is no use.
+  on('classic.PostModelSwitch', async ($, e, next) => {
+    await dropCache($)
+    return next(e)
+  })
+  on('classic.SessionStart', async ($, e, next) => {
+    if (e.source === 'clear') await dropCache($)
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -99,8 +142,8 @@ export const register: Register = on => {
     const modelParts = []
     let ring: RenderChildren = null
 
-    if (s.model) modelParts.push(<Text color="suggestion">{s.model}</Text>)
-    if (s.effort) modelParts.push(<Text color="suggestion">{s.effort}</Text>)
+    if (showModel && s.model) modelParts.push(<Text color="suggestion">{s.model}</Text>)
+    if (showModel && s.effort) modelParts.push(<Text color="suggestion">{s.effort}</Text>)
     if (s.window) {
       const used = s.tokens ?? 0
       const pct = Math.round(s.percent ?? (100 * used) / s.window)
@@ -113,7 +156,15 @@ export const register: Register = on => {
         </Text>,
       )
     }
-    if (typeof s.usd === 'number') parts.push(<Text>${s.usd.toFixed(2)}</Text>)
+    if (showCache && s.cachedAt !== undefined) {
+      const now = await $.clock.now().catch(() => undefined)
+      if (now !== undefined) {
+        const remaining = s.cachedAt + cacheTtlMs - now
+        const isLow = remaining > 0 && remaining <= cacheTtlMs * CACHE_WARN_FRACTION
+        parts.push(<Text color={isLow ? 'warning' : undefined} dimColor={!isLow}>{cacheLabel(remaining)}</Text>)
+      }
+    }
+    if (showCost && typeof s.usd === 'number') parts.push(<Text>${s.usd.toFixed(2)}</Text>)
 
     // Context and cost on the left, model and effort flush right.
     return (
