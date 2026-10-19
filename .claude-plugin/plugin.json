@@ -1,6 +1,6 @@
 {
   "name": "context-band",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "입력창 위 띠에 모델 · effort · 컨텍스트 사용량 · 세션 비용 표시",
   "author": { "name": "wonhajin" },
   "homepage": "https://github.com/wonhajin/context_band",
