@@ -18,10 +18,9 @@ npx -p typescript@5.6.3 tsc -p .     # .claude-plugin/types/ 가 생성된 뒤�
 
 ## 설치·로드
 
-- **설치됨(user scope):** 로컬 마켓플레이스 `local-mods`(`.claude-plugin/marketplace.json`, `source: "./"`)로 `context-band@local-mods` 설치. 설치본도 **이 폴더를 직접 읽는다**(`claude plugin list` → `Read from: D:\context_viewer`).
-  - 수정 반영: 파일 저장 후 세션에서 `/reload-plugins`. 재설치·버전업 불필요.
-  - 재설치 시: `claude plugin marketplace add D:\context_viewer` → `claude plugin install context-band@local-mods`
-- **중복 로드 주의:** 설치된 상태에서 `--plugin-dir`·`CLAUDE_CODE_PLUGIN_DIRS`·dev-mods junction을 함께 쓰지 않는다(같은 모드가 두 번 로드됨).
+- **배포:** 마켓플레이스 `wonhajin`(별도 레포 `wonhajin/claude-plugins`)이 이 레포의 **`main`**(`ref: "main"`)을 가리킨다. 이 레포에는 `marketplace.json`이 없다.
+  - 설치본은 **캐시 복사본**이다. 이 폴더를 고쳐도 설치본에는 반영되지 않는다 — `main` 머지 + `plugin.json`의 `version` 올림 → `claude plugin update context-band@wonhajin`. **버전을 안 올리면 "이미 최신"으로 옛 복사본이 남는다.**
+- **개발 중 확인:** `claude plugin disable context-band@wonhajin` 후 `claude --plugin-dir .`로 띄우고 `/reload-plugins`. 설치본을 켠 채 `--plugin-dir`·`CLAUDE_CODE_PLUGIN_DIRS`를 함께 쓰지 않는다(같은 모드가 두 번 로드됨).
 
 ## 알려진 제약
 
