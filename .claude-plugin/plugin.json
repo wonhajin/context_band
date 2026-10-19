@@ -1,0 +1,6 @@
+{
+  "name": "context-band",
+  "version": "0.1.0",
+  "description": "Model, effort, context usage and session cost in a band above the prompt",
+  "types": "./types/index.d.ts"
+}

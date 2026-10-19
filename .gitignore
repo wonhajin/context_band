@@ -1,0 +1,7 @@
+# Engine-generated API types (rewritten on every mod load)
+.claude-plugin/types/
+
+# SDD artifacts / brainstorm sessions
+.superpowers/
+
+node_modules/

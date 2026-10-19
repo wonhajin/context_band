@@ -1,0 +1,5 @@
+{
+  "name": "local-mods",
+  "owner": { "name": "원하진" },
+  "plugins": [{ "name": "context-band", "source": "./" }]
+}
