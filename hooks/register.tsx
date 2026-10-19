@@ -63,7 +63,11 @@ async function refresh($: EngineInterface, patch: Partial<Snapshot> = {}, figure
   }))
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  // userConfig toggles; a change in /config reloads the module with the new values.
+  const showModel = options.showModel !== false
+  const showCost = options.showCost !== false
+
   on('session.start', async ($, e, next) => {
     await refresh($).catch(() => undefined)
     return next(e)
@@ -99,8 +103,8 @@ export const register: Register = on => {
     const modelParts = []
     let ring: RenderChildren = null
 
-    if (s.model) modelParts.push(<Text color="suggestion">{s.model}</Text>)
-    if (s.effort) modelParts.push(<Text color="suggestion">{s.effort}</Text>)
+    if (showModel && s.model) modelParts.push(<Text color="suggestion">{s.model}</Text>)
+    if (showModel && s.effort) modelParts.push(<Text color="suggestion">{s.effort}</Text>)
     if (s.window) {
       const used = s.tokens ?? 0
       const pct = Math.round(s.percent ?? (100 * used) / s.window)
@@ -113,7 +117,7 @@ export const register: Register = on => {
         </Text>,
       )
     }
-    if (typeof s.usd === 'number') parts.push(<Text>${s.usd.toFixed(2)}</Text>)
+    if (showCost && typeof s.usd === 'number') parts.push(<Text>${s.usd.toFixed(2)}</Text>)
 
     // Context and cost on the left, model and effort flush right.
     return (

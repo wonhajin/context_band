@@ -24,6 +24,24 @@ describe('context-band', () => {
     }
   })
 
+  test('hides model, effort and cost when turned off', { options: { showModel: false, showCost: false } }, async ($, on) => {
+    on('session.model', () => ({ value: 'claude-opus-5-5' }))
+    on('session.measure', (_$, e) => ({ changed: e.changed }))
+    await $.session.measure({
+      context: { tokens: 74_000, window: 1_000_000, percent: 7 },
+      cost: { usd: 3.21 },
+      rateLimits: [],
+      changed: ['context', 'cost'],
+    })
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount({ plugin: 'context-band', surface, ...BAND } as never)
+      expect(await ui.find({ type: 'Text', text: /Context 7%/ })).toBeDefined()
+      expect(await ui.find({ type: 'Text', text: /Opus 5\.5/ })).toBeUndefined()
+      expect(await ui.find({ type: 'Text', text: /\$3\.21/ })).toBeUndefined()
+      await ui.unmount()
+    }
+  })
+
   test('shows the model id as its display name', async ($, on) => {
     expect(displayName('claude-opus-5-5')).toBe('Opus 5.5')
     expect(displayName('claude-fable-5-1')).toBe('Fable 5.1')

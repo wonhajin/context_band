@@ -9,5 +9,19 @@
   "keywords": ["context", "usage", "cost", "statusline", "model", "effort", "컨텍스트"],
   "documentationUrl": "https://github.com/wonhajin/context_band#readme",
   "supportUrl": "https://github.com/wonhajin/context_band/issues",
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "showModel": {
+      "type": "boolean",
+      "title": "모델 · effort 표시",
+      "description": "띠 오른쪽의 모델 이름과 effort를 표시합니다",
+      "default": true
+    },
+    "showCost": {
+      "type": "boolean",
+      "title": "세션 비용 표시",
+      "description": "띠 왼쪽의 세션 비용($)을 표시합니다",
+      "default": true
+    }
+  }
 }
