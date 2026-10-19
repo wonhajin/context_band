@@ -6,6 +6,8 @@ export type Snapshot = {
   percent?: number
   usd?: number
   isLight?: boolean
+  // When the main conversation's last request read or wrote the prompt cache (ms since epoch).
+  cachedAt?: number
 }
 
 declare module 'claude-code' {
