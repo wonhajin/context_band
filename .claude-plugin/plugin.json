@@ -22,6 +22,19 @@
       "title": "세션 비용 표시",
       "description": "띠 왼쪽의 세션 비용($)을 표시합니다",
       "default": true
+    },
+    "showCache": {
+      "type": "boolean",
+      "title": "캐시 남은 시간 표시",
+      "description": "프롬프트 캐시가 만료되기까지 남은 시간(추정)을 표시합니다",
+      "default": true
+    },
+    "cacheTtl": {
+      "type": "string",
+      "title": "캐시 TTL",
+      "description": "남은 시간 계산에 쓸 프롬프트 캐시 TTL",
+      "options": ["5m", "1h"],
+      "default": "1h"
     }
   }
 }
