@@ -1,8 +1,8 @@
-# CLAUDE.md (context_viewer)
+# CLAUDE.md (context_band)
 
 Claude Code 모드(mod) `context-band` — 입력창 위 띠(`AbovePrompt`)에 모델 · effort · 컨텍스트 사용량 · 세션 비용을 표시한다. `~/.claude/statusline.mjs`의 표시 내용을 모드로 옮긴 것.
 
-- **버전관리:** 이 레포는 **git 단독**(SVN 없음, 원격 없음). 전역 CLAUDE.md의 SVN 관련 규칙은 적용하지 않는다.
+- **원격:** GitHub `wonhajin/context_band` (**public**). 커밋 작성자 이메일은 noreply 주소만 쓴다 — 개인·회사 이메일이 공개 히스토리에 남는다.
 - **레포 루트 = 모드 폴더.** `.claude-plugin/plugin.json` · `hooks/hooks.json` · `hooks/register.tsx`(본체) · `types/index.d.ts`(`$.state` 계약) · `tests/*.test.tsx`.
 - **빌드 없음.** 엔진이 `.tsx`를 직접 로드한다.
 
