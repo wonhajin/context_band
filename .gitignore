@@ -5,3 +5,10 @@
 .superpowers/
 
 node_modules/
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/.cc-writes/
+
+# macOS
+.DS_Store
